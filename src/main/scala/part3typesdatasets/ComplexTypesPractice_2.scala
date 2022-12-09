@@ -2,8 +2,6 @@ package part3typesdatasets
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import part3typesdatasets.CommonTypesPractice_1.spark
-import part3typesdatasets.ComplexTypes.{moviesDF, spark}
 
 object ComplexTypesPractice_2 extends App {
 
@@ -53,20 +51,33 @@ object ComplexTypesPractice_2 extends App {
 
   // Structures
   // Structures (or simply Structs) are groups of columns aggregated into one
-  14: 55
 
-  // 1 - with col operators
+
+  // by using struct, we can group two or more columns and put them in a single tuple:
+  // +--------------------+--------------------+
+  //|               Title|              Profit|
+  //+--------------------+--------------------+
+  //|      The Land Girls|    {146083, 146083}|
+  //|First Love, Last ...|      {10876, 10876}|
+  //|I Married a Stran...|    {203134, 203134}|
+
+  // 1 - first way of creating struct (tuples) is by using col operators:
   moviesDF
     .select(col("Title"), struct(col("US_Gross"), col("Worldwide_Gross")).as("Profit"))
+    // we can get struct fields by calling .getField on the struct column
     .select(col("Title"), col("Profit").getField("US_Gross").as("US_Profit"))
+    .show()
 
-  // 2 - with expression strings
+  // 2 - second way of creating struct is by using expression strings
   moviesDF
     .selectExpr("Title", "(US_Gross, Worldwide_Gross) as Profit")
+    // we can get struct fields by calling .getField on the struct column
     .selectExpr("Title", "Profit.US_Gross")
+    .show()
 
   // Arrays
 
+  // split function gets a pattern (regex) and based on that, it splits the given String into an array
   val moviesWithWords = moviesDF.select(col("Title"), split(col("Title"), " |,").as("Title_Words")) // ARRAY of strings
 
   moviesWithWords.select(
