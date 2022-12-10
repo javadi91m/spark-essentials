@@ -142,4 +142,67 @@ object DatasetsPractice_4 extends App {
   carsDS.select(avg(col("Horsepower")))
 
 
+  // Joins
+
+  // note: when you use inferSchema: true, spark will read all int numbers as BigInt (Long), so if you model them with Int in your case class, you're going to face an exception
+  case class Guitar(id: Long, make: String, model: String, `type`: String)
+  case class GuitarPlayer(id: Long, name: String, guitars: Seq[Long], band: Long)
+  case class Band(id: Long, name: String, hometown: String, year: Long)
+
+  val guitarsDS = readDF("guitars.json").as[Guitar]
+  val bandsDS = readDF("bands.json").as[Band]
+  val guitarPlayersDS = readDF("guitarPlayers.json").as[GuitarPlayer]
+
+  // calling "join" method on a DataSet results a DataFrame, but "joinWith", results a Dataset
+  // joinWith returns a Tuple of first DS and Second
+  val joined: Dataset[(GuitarPlayer, Band)] = guitarPlayersDS.joinWith(bandsDS, guitarPlayersDS.col("band") === bandsDS.col("id"), "inner")
+
+  /*
+  +--------------------+--------------------+
+  |                  _1|                  _2|
+  +--------------------+--------------------+
+  |{1, ANGUS YOUNG, ...|{1, AC/DC, Sydney...|
+  |{0, JIMMY PAGE, [...|{0, Led Zeppelin,...|
+  |{3, KIRK HAMMETT,...|{3, Metallica, Lo...|
+  +--------------------+--------------------+
+
+  you can see there are only two columns: _1 , _2 (obviously you can rename them by withColumnRenamed)
+  the value for each of these two columns is an array of individual fields
+   */
+
+  val mappedJoined = joined.map(tuple => {
+    val guitarPlayer = tuple._1
+    val band = tuple._2
+    val newGuitarPlayer = guitarPlayer.copy(name = guitarPlayer.name.toUpperCase())
+    (newGuitarPlayer, band)
+  })
+
+  mappedJoined.show()
+
+
+  /**
+    * Exercise: join the guitarsDS and guitarPlayersDS, in an outer join
+    * (hint: use array_contains)
+    */
+
+  val guitarWithGuitarPlayersJoined = guitarPlayersDS
+    .joinWith(guitarsDS, array_contains(guitarPlayersDS.col("guitars"), guitarsDS.col("id")), "outer")
+
+  guitarWithGuitarPlayersJoined.show()
+
+
+  // Grouping DS
+
+  val carsGroupedByOrigin_oldWay = carsDS
+    .groupBy(col("Origin"))
+    .count()
+    .show()
+
+  val carsGroupedByOrigin = carsDS
+    .groupByKey(_.Origin)
+    .count() // => Dataset[(K, Long)]
+    .show()
+
+  // joins and groups are WIDE transformations, will involve SHUFFLE operations
+
 }
