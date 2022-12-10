@@ -1,9 +1,9 @@
 package part3typesdatasets
 
 import java.sql.Date
-
 import org.apache.spark.sql.{DataFrame, Dataset, Encoders, SparkSession}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.DateType
 
 
 object Datasets extends App {
@@ -45,6 +45,7 @@ object Datasets extends App {
     .json(s"src/main/resources/data/$filename")
 
   val carsDF = readDF("cars.json")
+    .withColumn("Year", col("Year").cast(DateType))
 
   // 3 - define an encoder (importing the implicits)
   import spark.implicits._
