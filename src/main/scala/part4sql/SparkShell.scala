@@ -29,7 +29,7 @@ object SparkShell extends App {
     * As discussed in the lecture, there is no difference between Spark SQL tables and DataFrames from Spark's point of view.
     * From our point of view as programmers:
     *   - DataFrames can only be accessed programmatically in Scala (or Java, Python or a language that Spark supports)
-    *   - tables can be accessed in Spark SQL in the context of a database (which is just a form of organizing them)
+    *   - tables can be accessed in Spark SQL in the context of a database (which is just a form of organizing tables)
     */
 
 
@@ -53,7 +53,7 @@ object SparkShell extends App {
     * create table persons(id integer, name string);
     *
     * // inserting data manually into a table
-    * insert into persons values (1, "Martin Odersky"), (2, "Matei Zaharia")
+    * insert into persons values (1, "Martin Odersky"), (2, "Matei Zaharia");
     *
     * // selecting from a table
     * select * from persons;
