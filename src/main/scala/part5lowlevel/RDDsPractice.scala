@@ -1,11 +1,16 @@
 package part5lowlevel
 
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.{Row, SaveMode, SparkSession}
+import org.apache.spark.sql.functions._
+import part5lowlevel.RDDs.moviesRDD
 
 import scala.io.Source
 
 object RDDsPractice extends App {
+
+  Logger.getLogger("org").setLevel(Level.ERROR)
 
   /*
   RDD: Resilient Distributed Datasets: Distributed typed collections of JVM object
@@ -105,12 +110,109 @@ object RDDsPractice extends App {
   val stocksRDD4: RDD[Row] = stocksDF.rdd
 
 
-
   // RDD -> DF
   val numbersDF = numbersRDD.toDF("numbers") // you lose the type info
 
   // RDD -> DS
   val numbersDS = spark.createDataset(numbersRDD) // you get to keep type info
 
+
+
+
+  // Transformations
+
+  // filtering
+  val msftRDD = stocksRDD.filter(_.symbol == "MSFT") // flazy transformation
+  val msftCOunt = msftRDD.count() // eager action
+
+
+  val companyNamesRDD = stocksRDD.map(_.symbol).distinct() // lazy transformation
+  println(companyNamesRDD.take(10).mkString("Array(", ", ", ")"))
+
+
+  // min and max
+  // first we need to define an implicit comparator
+  implicit val stockOrdering: Ordering[StockValue] = Ordering.fromLessThan((first, second) => first.price < second.price)
+  val minMSFT = msftRDD.min() // eager action
+  println(s"min value: ${minMSFT}")
+
+
+  // reducing
+  val reduced = numbersRDD.reduce(_ + _)
+
+
+  // grouping
+  val groupedStocksRDD: RDD[(String, Iterable[StockValue])] = stocksRDD.groupBy(_.symbol)
+  // very expensive, much like DF and DS => because of shuffling
+
+
+  // Partitioning
+  // RDDs have the capability of choosing how they are going to be partitioned
+
+  /*
+    Repartitioning
+    in repartition we can increase/decrease number of partitions, that involved shuffling
+    for decreasing number of partition, consider using coalesce
+    Repartitioning is EXPENSIVE. Involves Shuffling.
+    BEST PRACTICE: partition EARLY, then process that.
+    BEST PRACTICE: Size of a partition should be 10-100MB. => by size of each partition we need to specify the number of partitions
+   */
+  val repartitionedStocksRDD = stocksRDD.repartition(30)
+  repartitionedStocksRDD.toDF.write
+    .mode(SaveMode.Overwrite)
+    .parquet("src/main/resources/data/stocks30")
+
+
+  // coalesce: coalesce will repartition an RDD to fewer partitions than currently it has
+  val coalescedRDD = repartitionedStocksRDD.coalesce(15) // does NOT involve shuffling
+  coalescedRDD.toDF.write
+    .mode(SaveMode.Overwrite)
+    .parquet("src/main/resources/data/stocks15")
+
+
+  /**
+    * Exercises
+    *
+    * 1. Read the movies.json as an RDD.
+    * 2. Show the distinct genres as an RDD.
+    * 3. Select all the movies in the Drama genre with IMDB rating > 6.
+    * 4. Show the average rating of movies by genre.
+    */
+
+  case class Movie(title: String, genre: String, rating: Double)
+
+  // Read the movies.json as an RDD.
+  val moviesDF = spark.read.json("src/main/resources/data/movies.json")
+
+  val moviesRDD = moviesDF
+    // we cannot directly transform moviesDF to a Dataset[Movie], because the number of columns is different and this makes spark crash, secondly the column names are different.
+    .select(col("Title").as("title"), col("Major_Genre").as("genre"), col("IMDB_Rating").as("rating"))
+    .where(col("genre").isNotNull and col("rating").isNotNull)
+    .as[Movie]
+    .rdd
+
+
+  // 2. Show the distinct genres as an RDD
+  val distinctGenres = moviesRDD.map(_.genre).distinct()
+    .reduce((a, b) => a + "," + b)
+  println(s"distinctGenres: ${distinctGenres}")
+
+
+  // 3. Select all the movies in the Drama genre with IMDB rating > 6.
+  moviesRDD.filter(movie => movie.genre.eq("Drama") && movie.rating > 6)
+
+
+  // 4. Show the average rating of movies by genre.
+  case class GenreAvgRating(genre: String, rating: Double)
+
+  val averageRating = moviesRDD.groupBy(_.genre)
+    .map {
+      case (genre, movies) => GenreAvgRating(genre, movies.map(_.rating).sum / movies.size)
+    }
+  averageRating.toDF().show()
+
+
+  // if we wanted to write it by using DF:
+  moviesRDD.toDF.groupBy(col("genre")).avg("rating").show
 
 }
