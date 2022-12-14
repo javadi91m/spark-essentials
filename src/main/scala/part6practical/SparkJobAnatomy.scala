@@ -15,6 +15,26 @@ object SparkJobAnatomy extends App {
     * You can copy these expressions and paste them (even multi-line) into the Spark shell.
     */
 
+
+  /*
+  A job has multiple stages and each stage has multiple tasks
+  Stage: stage is a set of computations in between shuffles
+  shuffle: exchange of data between spark nodes
+  task: a unit of computation, per partition => if we have 10 tasks in a stage, it means that we have 10 partitions
+
+  DAG: Directed Acyclic Graph
+    it's a graph of RDD dependencies, meaning the transformation of RDDs (how an RDD produced by previous RDD)
+
+  we said Stages are delimited by shuffling, meaning per each shuffle, we have a new stage
+  every stage has a unique id which is just a Number starting from 0 and then increments in every SparkSession
+
+  if we create a DF or DS and then see the DAG, we'll notice that it has many more steps for the same,
+  it's because when we use these higher level APIs, we don't have much of control over steps (Step: every single piece in DAG)
+
+   */
+
+
+
   val spark = SparkSession.builder()
     .config("spark.master", "local")
     .appName("Spark Job Anatomy")
@@ -53,7 +73,7 @@ object SparkJobAnatomy extends App {
     * Complex job 1
     * This executes two JOBS!
     * The Spark optimizer is able to pre-determine the job/stage/task planning before running any code.
-   */
+    */
   val ds2 = spark.range(1, 100000, 2)
   val ds3 = ds1.repartition(7)
   val ds4 = ds2.repartition(9)
@@ -67,7 +87,8 @@ object SparkJobAnatomy extends App {
     * This executes a single job with a massive DAG, and 6 stages:
     * - two for the toDF calls, 6 tasks each
     * - two for the repartitioning of both datasets (7 and 9 tasks respectively)
-    * - one for the join (200 tasks)
+    * - one for the join (200 tasks) => when spark wants to join 2 RDD, it'll repartition both into 200 (default value) partitions
+    *     here spark do a sort before joining, because joining two sorted sets are much faster that non-sorted
     * - one for the aggregation (1 task)
     *
     * The default number of partitions for a joined DF (and any unspecified repartition) is 200.
