@@ -31,6 +31,7 @@ object TestDeployApp2 {
       * the Spark driver (not cluster driver!) is launched on a worker node
       * the cluster manager is responsible for Spark processes
       in this way all communications between spark-driver and spark-executors will be done inside cluster and cluster manager will take care of running processes correctly
+      In cluster mode, the driver runs on one of the worker nodes, and this node shows as a driver on the Spark Web UI of your application. cluster mode is used to run production jobs.
 
     - client (03.png):
       * spark-driver is on the client application (the application which submits the job)
@@ -38,6 +39,7 @@ object TestDeployApp2 {
       first client application talks to spark cluster manager and after that, cluster manager will spawn spark-driver on the client machine (and not the actual cluster),
       then spark cluster manager will take care to spin up the executors on the worker nodes,
       and after that, spark-driver starts to communicate with spark-executors residing on the cluster
+      In client mode, the driver runs locally from where you are submitting your application using spark-submit command. client mode is majorly used for interactive and debugging purposes. Note that in client mode only the driver runs locally and all tasks run on cluster worker nodes.
 
     - local:
       the entire application runs on the same machine. you have as much parallelism as many cores you have on your computer
