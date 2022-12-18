@@ -60,6 +60,7 @@ object TestDeployApp2 {
 
     val spark = SparkSession.builder()
       .appName("Test Deploy App")
+      // notice that we don't specify "spark.master" as local here, we're going to specify it while running application through spark-submit
       .getOrCreate()
 
     val moviesDF = spark.read

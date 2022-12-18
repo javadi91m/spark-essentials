@@ -77,7 +77,7 @@ object DatasetsPractice_4 extends App {
     .option("inferSchema", "true")
     .json(s"src/main/resources/data/$filename")
 
-  // we need to either explicitly case the Date columns (Year)
+  // we need to either explicitly cast the Date columns (Year)
   // or we need to pass a manual schema in which we can define "Year" as Date
   val carsDF = readDF("cars.json")
     .withColumn("Year", col("Year").cast(DateType))
